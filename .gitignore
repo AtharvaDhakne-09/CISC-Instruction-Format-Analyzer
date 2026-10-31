@@ -1,4 +1,10 @@
 build/
+build-*/
 *.exe
 *.o
 *.obj
+*.pdb
+*.ilk
+*.user
+CMakeUserPresets.json
+aqtinstall.log

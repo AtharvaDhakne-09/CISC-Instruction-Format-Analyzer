@@ -1,0 +1,951 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>CISC Instruction Format Analyzer</title>
+  <style>
+    /* ============================================================
+       RESET & BASE
+    ============================================================ */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --blue:        #2563EB;
+      --blue-light:  #DBEAFE;
+      --blue-mid:    #93C5FD;
+      --green:       #16A34A;
+      --green-light: #DCFCE7;
+      --green-mid:   #86EFAC;
+      --orange:      #EA580C;
+      --orange-light:#FFEDD5;
+      --purple:      #7C3AED;
+      --purple-light:#EDE9FE;
+      --gray-100:    #F3F4F6;
+      --gray-200:    #E5E7EB;
+      --gray-400:    #9CA3AF;
+      --gray-600:    #4B5563;
+      --gray-800:    #1F2937;
+      --white:       #FFFFFF;
+      --radius:      10px;
+      --shadow:      0 2px 12px rgba(0,0,0,0.08);
+    }
+
+    body {
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      background: #F8FAFC;
+      color: var(--gray-800);
+      line-height: 1.6;
+      min-height: 100vh;
+    }
+
+    /* ============================================================
+       HEADER
+    ============================================================ */
+    header {
+      background: var(--white);
+      border-bottom: 3px solid var(--blue);
+      padding: 20px 40px;
+    }
+    header h1 {
+      font-size: 1.75rem;
+      font-weight: 700;
+      color: var(--blue);
+      letter-spacing: -0.5px;
+    }
+    header p.subtitle {
+      margin-top: 4px;
+      font-size: 1rem;
+      color: var(--gray-600);
+    }
+
+    /* ============================================================
+       TAB NAV
+    ============================================================ */
+    nav.tabs {
+      display: flex;
+      gap: 0;
+      padding: 0 40px;
+      background: var(--white);
+      border-bottom: 2px solid var(--gray-200);
+    }
+    nav.tabs button {
+      padding: 14px 32px;
+      font-size: 1rem;
+      font-weight: 600;
+      border: none;
+      background: transparent;
+      color: var(--gray-600);
+      cursor: pointer;
+      border-bottom: 3px solid transparent;
+      margin-bottom: -2px;
+      transition: color 0.15s, border-color 0.15s;
+    }
+    nav.tabs button:hover { color: var(--blue); }
+    nav.tabs button.active {
+      color: var(--blue);
+      border-bottom-color: var(--blue);
+    }
+
+    /* ============================================================
+       MAIN LAYOUT
+    ============================================================ */
+    main {
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 32px 20px 60px;
+    }
+
+    .tab-panel { display: none; }
+    .tab-panel.active { display: block; }
+
+    /* ============================================================
+       CARDS
+    ============================================================ */
+    .card {
+      background: var(--white);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      padding: 28px;
+      margin-bottom: 28px;
+    }
+    .card h2 {
+      font-size: 1.25rem;
+      font-weight: 700;
+      margin-bottom: 8px;
+      color: var(--gray-800);
+    }
+    .card p {
+      font-size: 0.97rem;
+      color: var(--gray-600);
+      margin-bottom: 12px;
+    }
+
+    /* ============================================================
+       INSTRUCTION SELECTOR
+    ============================================================ */
+    .instr-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+      gap: 12px;
+      margin-top: 16px;
+    }
+    .instr-btn {
+      padding: 14px 18px;
+      border: 2px solid var(--gray-200);
+      border-radius: var(--radius);
+      background: var(--white);
+      text-align: left;
+      cursor: pointer;
+      transition: border-color 0.15s, background 0.15s;
+      font-family: 'Consolas', 'Courier New', monospace;
+      font-size: 0.9rem;
+      font-weight: 600;
+      color: var(--gray-800);
+    }
+    .instr-btn:hover {
+      border-color: var(--blue);
+      background: var(--blue-light);
+    }
+    .instr-btn.selected {
+      border-color: var(--blue);
+      background: var(--blue-light);
+      color: var(--blue);
+    }
+    .instr-btn .instr-len {
+      display: block;
+      font-size: 0.75rem;
+      font-weight: 400;
+      color: var(--gray-400);
+      margin-top: 4px;
+      font-family: 'Segoe UI', sans-serif;
+    }
+
+    /* ============================================================
+       INSTRUCTION DETAIL PANEL
+    ============================================================ */
+    #detail-panel {
+      animation: fadeIn 0.2s ease;
+    }
+    @keyframes fadeIn { from { opacity:0; transform:translateY(6px);} to {opacity:1;transform:none;} }
+
+    .detail-top {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 20px;
+      margin-bottom: 24px;
+    }
+    .detail-top .info-box {
+      flex: 1;
+      min-width: 200px;
+      background: var(--gray-100);
+      border-radius: var(--radius);
+      padding: 16px 20px;
+    }
+    .info-box .label {
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--gray-400);
+      font-weight: 600;
+    }
+    .info-box .value {
+      font-size: 1rem;
+      font-weight: 700;
+      color: var(--gray-800);
+      margin-top: 4px;
+    }
+    .info-box .value.mono {
+      font-family: 'Consolas', 'Courier New', monospace;
+      font-size: 1.05rem;
+      color: var(--blue);
+    }
+    .info-box .note-text {
+      font-size: 0.9rem;
+      color: var(--gray-600);
+      margin-top: 6px;
+      line-height: 1.5;
+    }
+
+    /* ---- Byte strip ---- */
+    .section-title {
+      font-size: 0.8rem;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      font-weight: 700;
+      color: var(--gray-400);
+      margin-bottom: 10px;
+    }
+
+    .byte-strip {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-bottom: 20px;
+    }
+    .byte-block {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      cursor: pointer;
+      transition: transform 0.12s;
+    }
+    .byte-block:hover { transform: translateY(-3px); }
+    .byte-block .hex-box {
+      width: 54px;
+      height: 54px;
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: 'Consolas', 'Courier New', monospace;
+      font-size: 1.1rem;
+      font-weight: 700;
+      border: 2px solid transparent;
+      transition: border-color 0.12s;
+    }
+    .byte-block.highlighted .hex-box { border-color: var(--gray-800) !important; }
+    .byte-block .byte-idx {
+      font-size: 0.7rem;
+      color: var(--gray-400);
+      margin-top: 4px;
+    }
+    .byte-block .byte-field-tag {
+      font-size: 0.65rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      margin-top: 2px;
+    }
+
+    /* field colours */
+    .field-prefix      { background: var(--purple-light); color: var(--purple); }
+    .field-opcode      { background: var(--blue-light);   color: var(--blue);   }
+    .field-modrm       { background: var(--green-light);  color: var(--green);  }
+    .field-sib         { background: var(--orange-light); color: var(--orange); }
+    .field-displacement{ background: #FEF9C3;             color: #854D0E;       }
+    .field-immediate   { background: #FCE7F3;             color: #9D174D;       }
+
+    /* ---- Byte explanation panel ---- */
+    #byte-explain {
+      background: var(--gray-100);
+      border-left: 4px solid var(--blue);
+      border-radius: 0 var(--radius) var(--radius) 0;
+      padding: 16px 20px;
+      margin-bottom: 24px;
+      min-height: 60px;
+      font-size: 0.95rem;
+      line-height: 1.6;
+      transition: background 0.15s;
+    }
+    #byte-explain p.hint {
+      color: var(--gray-400);
+      font-style: italic;
+    }
+    #byte-explain .explain-head {
+      font-weight: 700;
+      color: var(--gray-800);
+      margin-bottom: 6px;
+      font-size: 1rem;
+    }
+
+    /* ---- Fields table ---- */
+    .fields-grid {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 10px;
+    }
+    .field-row {
+      display: grid;
+      grid-template-columns: 140px 90px 1fr;
+      align-items: start;
+      gap: 12px;
+      padding: 12px 14px;
+      border-radius: 8px;
+      border: 1.5px solid var(--gray-200);
+    }
+    .field-row.absent {
+      opacity: 0.45;
+      background: var(--gray-100);
+    }
+    .field-row .fname {
+      font-weight: 700;
+      font-size: 0.88rem;
+    }
+    .field-row .fbytes {
+      font-family: 'Consolas', 'Courier New', monospace;
+      font-size: 0.95rem;
+      font-weight: 700;
+    }
+    .field-row .fdesc {
+      font-size: 0.87rem;
+      color: var(--gray-600);
+      line-height: 1.5;
+    }
+    .field-row .fdesc .purpose {
+      font-weight: 600;
+      color: var(--gray-800);
+      display: block;
+      margin-bottom: 2px;
+    }
+
+    /* ============================================================
+       COMPARISON TAB
+    ============================================================ */
+    .two-col {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 24px;
+      margin-bottom: 28px;
+    }
+    @media (max-width: 700px) { .two-col { grid-template-columns: 1fr; } }
+
+    .compare-card {
+      border-radius: var(--radius);
+      padding: 22px;
+      border: 2px solid transparent;
+    }
+    .compare-card.variable {
+      background: var(--blue-light);
+      border-color: var(--blue-mid);
+    }
+    .compare-card.fixed {
+      background: var(--green-light);
+      border-color: var(--green-mid);
+    }
+    .compare-card h3 {
+      font-size: 1.05rem;
+      font-weight: 700;
+      margin-bottom: 10px;
+    }
+    .compare-card.variable h3 { color: var(--blue); }
+    .compare-card.fixed h3    { color: var(--green); }
+    .compare-card p { font-size: 0.9rem; color: var(--gray-600); line-height: 1.6; }
+
+    /* length bar chart */
+    .len-samples { margin-top: 14px; }
+    .len-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 8px;
+      cursor: pointer;
+    }
+    .len-label {
+      font-family: 'Consolas','Courier New',monospace;
+      font-size: 0.8rem;
+      width: 230px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      color: var(--gray-700);
+    }
+    .len-bar-wrap {
+      flex: 1;
+      background: var(--white);
+      border-radius: 4px;
+      height: 22px;
+      position: relative;
+      overflow: hidden;
+    }
+    .len-bar {
+      height: 100%;
+      border-radius: 4px;
+      transition: width 0.4s ease;
+      display: flex;
+      align-items: center;
+      padding-left: 6px;
+      font-size: 0.75rem;
+      font-weight: 700;
+      color: var(--white);
+      white-space: nowrap;
+    }
+    .len-bar.var-bar  { background: var(--blue);  }
+    .len-bar.fix-bar  { background: var(--green); }
+
+    /* RISC-V bit diagram */
+    .riscv-diagram {
+      margin-top: 16px;
+      overflow-x: auto;
+    }
+    .riscv-fields {
+      display: flex;
+      align-items: stretch;
+      border: 2px solid var(--gray-200);
+      border-radius: 8px;
+      overflow: hidden;
+      min-width: max-content;
+    }
+    .riscv-field {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 10px 6px;
+      border-right: 1px solid var(--gray-200);
+      text-align: center;
+      transition: background 0.15s;
+    }
+    .riscv-field:last-child { border-right: none; }
+    .riscv-field:hover { filter: brightness(0.95); cursor: default; }
+    .riscv-field .rf-name { font-weight: 700; font-size: 0.85rem; }
+    .riscv-field .rf-bits { font-size: 0.68rem; color: var(--gray-400); margin-top: 2px; }
+    .riscv-field .rf-val  { font-family: 'Consolas', monospace; font-size: 0.7rem;
+                             color: var(--gray-600); margin-top: 4px; white-space: nowrap; }
+
+    /* Comparison table */
+    .cmp-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.9rem;
+    }
+    .cmp-table th {
+      background: var(--gray-100);
+      padding: 12px 16px;
+      text-align: left;
+      font-weight: 700;
+      font-size: 0.8rem;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--gray-600);
+    }
+    .cmp-table th:first-child { border-radius: 8px 0 0 0; }
+    .cmp-table th:last-child  { border-radius: 0 8px 0 0; }
+    .cmp-table td {
+      padding: 12px 16px;
+      vertical-align: top;
+      border-bottom: 1px solid var(--gray-200);
+      line-height: 1.5;
+    }
+    .cmp-table tr:last-child td { border-bottom: none; }
+    .cmp-table td:first-child { font-weight: 600; color: var(--gray-800); width: 200px; }
+    .cmp-table td.var-cell { color: var(--blue); }
+    .cmp-table td.fix-cell { color: var(--green); }
+
+    /* note boxes */
+    .note-box {
+      background: var(--gray-100);
+      border-left: 4px solid var(--gray-400);
+      border-radius: 0 var(--radius) var(--radius) 0;
+      padding: 12px 16px;
+      font-size: 0.87rem;
+      color: var(--gray-600);
+      line-height: 1.5;
+      margin-bottom: 14px;
+    }
+
+    /* ============================================================
+       LOADING / ERROR
+    ============================================================ */
+    .loading {
+      text-align: center;
+      padding: 60px;
+      color: var(--gray-400);
+      font-size: 1.1rem;
+    }
+    .error-msg {
+      background: #FEE2E2;
+      border-left: 4px solid #DC2626;
+      border-radius: 0 var(--radius) var(--radius) 0;
+      padding: 14px 18px;
+      color: #7F1D1D;
+      font-size: 0.95rem;
+    }
+
+    /* ============================================================
+       RESPONSIVE TWEAKS
+    ============================================================ */
+    @media (max-width: 600px) {
+      header { padding: 16px 20px; }
+      nav.tabs button { padding: 12px 16px; font-size: 0.88rem; }
+      main { padding: 20px 12px 40px; }
+      .field-row { grid-template-columns: 1fr 1fr; }
+      .field-row .fdesc { grid-column: 1 / -1; }
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <h1>CISC Instruction Format Analyzer</h1>
+  <p class="subtitle">An interactive educational tool — click instructions and bytes to explore how they work</p>
+</header>
+
+<nav class="tabs" role="tablist">
+  <button class="active" id="tab-explorer" onclick="showTab('explorer')" role="tab" aria-selected="true">
+    🔍 Instruction Explorer
+  </button>
+  <button id="tab-compare" onclick="showTab('compare')" role="tab" aria-selected="false">
+    ⚖️ Variable vs Fixed Length
+  </button>
+</nav>
+
+<main>
+
+  <!-- ================================================================
+       TAB 1 — INSTRUCTION EXPLORER
+  ================================================================ -->
+  <div class="tab-panel active" id="panel-explorer">
+
+    <div class="card">
+      <h2>Select an instruction to explore</h2>
+      <p>Each button below is a real x86 assembly instruction. Click one to see its machine code, byte breakdown, and what each part means.</p>
+      <div class="instr-grid" id="instr-list">
+        <div class="loading">Loading instructions…</div>
+      </div>
+    </div>
+
+    <div id="detail-panel" style="display:none;">
+
+      <div class="card">
+        <div class="detail-top" id="detail-top"></div>
+
+        <div class="section-title">Machine Code Bytes — click any byte to read its explanation</div>
+        <div class="byte-strip" id="byte-strip"></div>
+
+        <div id="byte-explain">
+          <p class="hint">👆 Click a coloured byte block above to see what that byte does.</p>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2>Instruction Fields</h2>
+        <p>x86 instructions are made of named fields. Some fields are optional — if a field is not needed, the instruction simply omits it, which is why instructions can be different lengths.</p>
+        <div class="fields-grid" id="fields-grid"></div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ================================================================
+       TAB 2 — COMPARISON
+  ================================================================ -->
+  <div class="tab-panel" id="panel-compare">
+
+    <div class="card">
+      <h2>What is variable-length vs fixed-length?</h2>
+      <p>The number of bytes an instruction uses is called its <strong>length</strong>. Different CPU designs make different choices about this. Click the bars below to compare.</p>
+    </div>
+
+    <div class="two-col" id="compare-two-col">
+      <div class="loading">Loading comparison…</div>
+    </div>
+
+    <div class="card" id="riscv-card" style="display:none;">
+      <h2>Inside a RISC-V instruction — fixed fields, always 32 bits</h2>
+      <p id="riscv-fields-label" style="margin-bottom:14px;"></p>
+      <div class="riscv-diagram">
+        <div class="riscv-fields" id="riscv-fields"></div>
+      </div>
+      <p style="margin-top:12px; font-size:0.85rem; color:var(--gray-400);">
+        Every field always sits at the same bit position in every instruction of this type. The CPU does not need to scan the instruction to find them.
+      </p>
+    </div>
+
+    <div class="card" id="cmp-table-card" style="display:none;">
+      <h2>Side-by-side comparison</h2>
+      <p>How do variable-length (x86 CISC) and fixed-length (RISC-V RV32I) instruction sets differ?</p>
+      <div style="overflow-x:auto;">
+        <table class="cmp-table" id="cmp-table"></table>
+      </div>
+    </div>
+
+    <div id="notes-area"></div>
+
+  </div>
+
+</main>
+
+<script>
+// ============================================================
+// STATE
+// ============================================================
+let catalog = null;
+let comparison = null;
+let selectedInstrId = null;
+let selectedByteIndex = null;
+let currentFields = [];
+
+// ============================================================
+// TAB SWITCHING
+// ============================================================
+function showTab(name) {
+  document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('nav.tabs button').forEach(b => {
+    b.classList.remove('active');
+    b.setAttribute('aria-selected', 'false');
+  });
+  document.getElementById('panel-' + name).classList.add('active');
+  const btn = document.getElementById('tab-' + name);
+  btn.classList.add('active');
+  btn.setAttribute('aria-selected', 'true');
+}
+
+// ============================================================
+// FETCH HELPERS
+// ============================================================
+async function fetchJSON(url) {
+  const r = await fetch(url);
+  if (!r.ok) throw new Error('HTTP ' + r.status + ' from ' + url);
+  return r.json();
+}
+
+// ============================================================
+// FIELD COLOUR CLASS
+// ============================================================
+const FIELD_COLOURS = {
+  prefix:       'field-prefix',
+  opcode:       'field-opcode',
+  modrm:        'field-modrm',
+  sib:          'field-sib',
+  displacement: 'field-displacement',
+  immediate:    'field-immediate',
+};
+
+function fieldClass(key) {
+  return FIELD_COLOURS[key] || 'field-opcode';
+}
+
+// Build a map: byteIndex -> field key (for colouring bytes)
+function buildByteFieldMap(fields) {
+  const map = {};
+  for (const f of fields) {
+    if (!f.present) continue;
+    for (let i = 0; i < f.length; i++) {
+      map[f.offset + i] = f.key;
+    }
+  }
+  return map;
+}
+
+// ============================================================
+// EXPLORER TAB — load catalog
+// ============================================================
+async function loadCatalog() {
+  try {
+    catalog = await fetchJSON('/api/instructions');
+    renderInstrList();
+  } catch (e) {
+    document.getElementById('instr-list').innerHTML =
+      '<div class="error-msg">Could not load instructions from the server. Make sure the server is running.<br><small>' + e.message + '</small></div>';
+  }
+}
+
+function renderInstrList() {
+  const container = document.getElementById('instr-list');
+  container.innerHTML = '';
+  for (const instr of catalog.instructions) {
+    const btn = document.createElement('button');
+    btn.className = 'instr-btn';
+    btn.dataset.id = instr.id;
+    btn.innerHTML =
+      '<span>' + escHtml(instr.assembly) + '</span>' +
+      '<span class="instr-len">' + instr.length + ' byte' + (instr.length !== 1 ? 's' : '') + ' &nbsp;·&nbsp; ' + escHtml(instr.hex) + '</span>';
+    btn.addEventListener('click', () => selectInstruction(instr.id));
+    container.appendChild(btn);
+  }
+}
+
+// ============================================================
+// EXPLORER TAB — select instruction
+// ============================================================
+async function selectInstruction(id) {
+  // Highlight selected button
+  document.querySelectorAll('.instr-btn').forEach(b => b.classList.remove('selected'));
+  const activeBtn = document.querySelector('.instr-btn[data-id="' + id + '"]');
+  if (activeBtn) activeBtn.classList.add('selected');
+
+  selectedInstrId = id;
+  selectedByteIndex = null;
+
+  try {
+    const instr = await fetchJSON('/api/instruction/' + encodeURIComponent(id));
+    currentFields = instr.fields;
+    renderDetail(instr);
+    document.getElementById('detail-panel').style.display = '';
+  } catch (e) {
+    document.getElementById('detail-panel').style.display = '';
+    document.getElementById('detail-top').innerHTML =
+      '<div class="error-msg">Failed to load instruction detail.<br><small>' + e.message + '</small></div>';
+  }
+}
+
+function renderDetail(instr) {
+  // — Info boxes —
+  const top = document.getElementById('detail-top');
+  top.innerHTML = `
+    <div class="info-box" style="flex:2;min-width:240px;">
+      <div class="label">Assembly instruction</div>
+      <div class="value mono">${escHtml(instr.assembly)}</div>
+      <div class="note-text">${escHtml(instr.note)}</div>
+    </div>
+    <div class="info-box">
+      <div class="label">Machine code (hex)</div>
+      <div class="value mono">${escHtml(instr.hex)}</div>
+    </div>
+    <div class="info-box">
+      <div class="label">Total length</div>
+      <div class="value">${instr.length} byte${instr.length !== 1 ? 's' : ''}</div>
+    </div>
+  `;
+
+  // — Byte strip —
+  const byteFieldMap = buildByteFieldMap(instr.fields);
+  const strip = document.getElementById('byte-strip');
+  strip.innerHTML = '';
+  instr.bytes.forEach((hexByte, idx) => {
+    const fieldKey = byteFieldMap[idx] || 'opcode';
+    const cls = fieldClass(fieldKey);
+    const block = document.createElement('div');
+    block.className = 'byte-block';
+    block.innerHTML = `
+      <div class="hex-box ${cls}">${escHtml(hexByte)}</div>
+      <div class="byte-idx">Byte ${idx}</div>
+      <div class="byte-field-tag ${cls}">${fieldLabelShort(fieldKey)}</div>
+    `;
+    block.addEventListener('click', () => clickByte(idx, fieldKey, hexByte, instr));
+    strip.appendChild(block);
+  });
+
+  // Reset explanation
+  document.getElementById('byte-explain').innerHTML =
+    '<p class="hint">👆 Click a coloured byte block above to see what that byte does.</p>';
+
+  // — Fields grid —
+  renderFieldsGrid(instr.fields);
+}
+
+function fieldLabelShort(key) {
+  const map = { prefix:'Prefix', opcode:'Opcode', modrm:'ModR/M', sib:'SIB',
+                 displacement:'Disp', immediate:'Imm' };
+  return map[key] || key;
+}
+
+function clickByte(byteIndex, fieldKey, hexByte, instr) {
+  // Remove highlight from all
+  document.querySelectorAll('.byte-block').forEach(b => b.classList.remove('highlighted'));
+  // Highlight this byte AND all bytes in same field
+  const field = instr.fields.find(f => f.key === fieldKey && f.present);
+  const start = field ? field.offset : byteIndex;
+  const end   = field ? field.offset + field.length : byteIndex + 1;
+  document.querySelectorAll('.byte-block').forEach((b, i) => {
+    if (i >= start && i < end) b.classList.add('highlighted');
+  });
+
+  // Show explanation
+  const explain = document.getElementById('byte-explain');
+  if (field) {
+    explain.innerHTML = `
+      <div class="explain-head">${escHtml(field.name)} — ${escHtml(field.bytes)}</div>
+      <div style="font-weight:600;color:var(--gray-600);margin-bottom:4px;">${escHtml(field.purpose)}</div>
+      <div>${escHtml(field.detail)}</div>
+    `;
+    explain.style.borderLeftColor = getFieldAccent(fieldKey);
+  } else {
+    explain.innerHTML = `<div class="explain-head">Byte ${byteIndex}: ${escHtml(hexByte)}</div><div>No specific field information available.</div>`;
+  }
+}
+
+function getFieldAccent(key) {
+  const map = {
+    prefix:'#7C3AED', opcode:'#2563EB', modrm:'#16A34A',
+    sib:'#EA580C', displacement:'#CA8A04', immediate:'#9D174D'
+  };
+  return map[key] || '#2563EB';
+}
+
+function renderFieldsGrid(fields) {
+  const grid = document.getElementById('fields-grid');
+  grid.innerHTML = '';
+  for (const f of fields) {
+    const row = document.createElement('div');
+    const cls = fieldClass(f.key);
+    row.className = 'field-row' + (f.present ? '' : ' absent');
+    row.style.borderColor = f.present ? '' : '';
+    row.innerHTML = `
+      <div class="fname ${cls}" style="padding:4px 8px;border-radius:6px;display:inline-block;">
+        ${escHtml(f.name)}
+      </div>
+      <div class="fbytes ${cls}">
+        ${f.present ? escHtml(f.bytes) : '—'}
+      </div>
+      <div class="fdesc">
+        <span class="purpose">${escHtml(f.purpose)}</span>
+        ${escHtml(f.detail)}
+      </div>
+    `;
+    grid.appendChild(row);
+  }
+}
+
+// ============================================================
+// COMPARISON TAB — load data
+// ============================================================
+async function loadComparison() {
+  try {
+    comparison = await fetchJSON('/api/comparison');
+    renderComparison();
+  } catch (e) {
+    document.getElementById('compare-two-col').innerHTML =
+      '<div class="error-msg" style="grid-column:1/-1;">Could not load comparison data.<br><small>' + e.message + '</small></div>';
+  }
+}
+
+function renderComparison() {
+  const twoCol = document.getElementById('compare-two-col');
+  const maxLen = 15; // x86 max in 32-bit mode (for bar scaling)
+
+  // Left card — variable
+  const varHTML = `
+    <div class="compare-card variable">
+      <h3>${escHtml(comparison.variableTitle)}</h3>
+      <p>${escHtml(comparison.variableText)}</p>
+      <div class="len-samples">
+        <div class="section-title" style="margin-top:16px;">Example instruction lengths</div>
+        ${comparison.variableSamples.map(s => `
+          <div class="len-row" title="${escHtml(s.hex)}">
+            <div class="len-label">${escHtml(s.label)}</div>
+            <div class="len-bar-wrap">
+              <div class="len-bar var-bar" style="width:${(s.length/maxLen*100).toFixed(1)}%">
+                ${s.length}B
+              </div>
+            </div>
+          </div>
+        `).join('')}
+      </div>
+    </div>
+  `;
+
+  // Right card — fixed
+  const fixHTML = `
+    <div class="compare-card fixed">
+      <h3>${escHtml(comparison.fixedTitle)}</h3>
+      <p>${escHtml(comparison.fixedText)}</p>
+      <div class="len-samples">
+        <div class="section-title" style="margin-top:16px;">Example instruction lengths</div>
+        ${comparison.fixedSamples.map(s => `
+          <div class="len-row" title="${escHtml(s.hex)} (${escHtml(s.word)})">
+            <div class="len-label">${escHtml(s.label)}</div>
+            <div class="len-bar-wrap">
+              <div class="len-bar fix-bar" style="width:${(s.length/maxLen*100).toFixed(1)}%">
+                ${s.length}B
+              </div>
+            </div>
+          </div>
+        `).join('')}
+      </div>
+    </div>
+  `;
+
+  twoCol.innerHTML = varHTML + fixHTML;
+
+  // RISC-V bit diagram
+  const riscvCard = document.getElementById('riscv-card');
+  document.getElementById('riscv-fields-label').textContent = comparison.fixedFieldsLabel;
+  const fieldsDiv = document.getElementById('riscv-fields');
+  fieldsDiv.innerHTML = '';
+  const riscvColors = ['#DBEAFE','#DCFCE7','#FFEDD5','#EDE9FE','#FEF9C3','#FCE7F3'];
+  comparison.fixedFields.forEach((f, i) => {
+    const col = riscvColors[i % riscvColors.length];
+    const flex = f.width / 32;
+    const div = document.createElement('div');
+    div.className = 'riscv-field';
+    div.style.cssText = `flex:${flex};background:${col};min-width:${f.width * 9}px;`;
+    div.innerHTML = `
+      <div class="rf-name">${escHtml(f.name)}</div>
+      <div class="rf-bits">bits ${escHtml(f.bits)}</div>
+      <div class="rf-val">${escHtml(f.value)}</div>
+    `;
+    fieldsDiv.appendChild(div);
+  });
+  riscvCard.style.display = '';
+
+  // Comparison table
+  const table = document.getElementById('cmp-table');
+  table.innerHTML = `
+    <thead>
+      <tr>
+        <th>Aspect</th>
+        <th style="color:var(--blue)">🔵 x86 CISC (variable)</th>
+        <th style="color:var(--green)">🟢 RISC-V RV32I (fixed)</th>
+      </tr>
+    </thead>
+    <tbody>
+      ${comparison.rows.map(r => `
+        <tr>
+          <td>${escHtml(r.aspect)}</td>
+          <td class="var-cell">${escHtml(r.variable)}</td>
+          <td class="fix-cell">${escHtml(r.fixed)}</td>
+        </tr>
+      `).join('')}
+    </tbody>
+  `;
+  document.getElementById('cmp-table-card').style.display = '';
+
+  // Notes
+  document.getElementById('notes-area').innerHTML = `
+    <div class="note-box">📏 <strong>x86 length range:</strong> ${escHtml(comparison.x86RangeNote)}</div>
+    <div class="note-box">ℹ️ <strong>Scope note:</strong> ${escHtml(comparison.scopeNote)}</div>
+  `;
+}
+
+// ============================================================
+// UTILITY
+// ============================================================
+function escHtml(s) {
+  return String(s)
+    .replace(/&/g,'&amp;')
+    .replace(/</g,'&lt;')
+    .replace(/>/g,'&gt;')
+    .replace(/"/g,'&quot;');
+}
+
+// ============================================================
+// INIT
+// ============================================================
+loadCatalog();
+loadComparison();
+</script>
+</body>
+</html>
+
