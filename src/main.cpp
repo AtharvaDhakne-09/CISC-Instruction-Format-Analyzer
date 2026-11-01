@@ -1,5 +1,5 @@
 // main.cpp — Crow HTTP server for the CISC Instruction Format Analyzer.
-// Serves the single-page frontend and exposes three JSON API endpoints.
+// Serves the single-page frontend and exposes the JSON API endpoints.
 //
 // Endpoints:
 //   GET /              -> web/index.html (HTML UI)

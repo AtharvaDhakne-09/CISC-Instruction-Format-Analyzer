@@ -124,9 +124,7 @@ std::string comparisonToJson(const Comparison& cmp) {
     o << "\"variableText\":" << jsonStr(cmp.variableText) << ",";
     o << "\"fixedTitle\":" << jsonStr(cmp.fixedTitle) << ",";
     o << "\"fixedText\":" << jsonStr(cmp.fixedText) << ",";
-    o << "\"x86RangeNote\":" << jsonStr(cmp.x86RangeNote) << ",";
-    o << "\"scopeNote\":" << jsonStr(cmp.scopeNote) << ",";
-    o << "\"fixedFieldsLabel\":" << jsonStr(cmp.fixedFieldsLabel) << ",";
+    o << "\"explanation\":" << jsonStr(cmp.explanation) << ",";
 
     // Variable samples
     o << "\"variableSamples\":[";
@@ -151,36 +149,7 @@ std::string comparisonToJson(const Comparison& cmp) {
         o << "\"id\":" << jsonStr(s.id) << ",";
         o << "\"label\":" << jsonStr(s.label) << ",";
         o << "\"hex\":" << jsonStr(s.hex) << ",";
-        o << "\"word\":" << jsonStr(s.word) << ",";
-        o << "\"length\":" << jsonNum(s.length) << ",";
-        o << "\"format\":" << jsonStr(s.format);
-        o << "}";
-    }
-    o << "],";
-
-    // Fixed fields (RISC-V bit layout)
-    o << "\"fixedFields\":[";
-    for (std::size_t i = 0; i < cmp.fixedFields.size(); ++i) {
-        if (i > 0) o << ",";
-        const auto& f = cmp.fixedFields[i];
-        o << "{";
-        o << "\"name\":" << jsonStr(f.name) << ",";
-        o << "\"bits\":" << jsonStr(f.bits) << ",";
-        o << "\"value\":" << jsonStr(f.value) << ",";
-        o << "\"width\":" << f.width;
-        o << "}";
-    }
-    o << "],";
-
-    // Comparison rows
-    o << "\"rows\":[";
-    for (std::size_t i = 0; i < cmp.rows.size(); ++i) {
-        if (i > 0) o << ",";
-        const auto& r = cmp.rows[i];
-        o << "{";
-        o << "\"aspect\":" << jsonStr(r.aspect) << ",";
-        o << "\"variable\":" << jsonStr(r.variable) << ",";
-        o << "\"fixed\":" << jsonStr(r.fixed);
+        o << "\"length\":" << jsonNum(s.length);
         o << "}";
     }
     o << "]";

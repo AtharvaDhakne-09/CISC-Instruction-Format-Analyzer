@@ -9,10 +9,8 @@
 namespace cisc {
 
 enum class FieldKind {
-    Prefix,
     Opcode,
     ModRM,
-    SIB,
     Displacement,
     Immediate
 };
@@ -58,7 +56,6 @@ public:
     static std::string fieldKey(FieldKind kind);
     static std::string fieldName(FieldKind kind);
     static std::string fieldPurpose(FieldKind kind);
-    static std::string absentDetail(FieldKind kind);
     static std::string byteHex(std::uint8_t value);
     static std::string bytesToHex(const std::vector<std::uint8_t>& bytes);
 
